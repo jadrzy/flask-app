@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, abort
+from dotenv import load_dotenv
 import os
 import psycopg2
 import logging
@@ -10,9 +11,17 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=6)
 jwt = JWTManager(app)
 
 # Wczytanie zmiennych środowiskowych
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
+# Konfiguracja bazy danych
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", 5432)
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME")
+API_KEY = os.getenv("API_KEY")  # Klucz API
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
 def get_db_connection():
     return psycopg2.connect(
