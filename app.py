@@ -219,8 +219,8 @@ def put_user_data():
 
     # Weryfikacja obecności serial_master
     serial_master = data.get("serial_master")
-    if not serial_master:
-        return jsonify({"msg": "serial_master is required"}), 400
+    if not serial_master or not isinstance(serial_master, str):
+        return jsonify({"msg": "serial_master is required and should be a string"}), 400
 
     # Pobranie serial_slaves
     serial_slaves = data.get("serial_slaves", [])
