@@ -219,8 +219,12 @@ def put_user_data():
 
     # Weryfikacja obecności serial_master
     serial_master = data.get("serial_master")
-    if not serial_master or not isinstance(serial_master, str):
-        return jsonify({"msg": "serial_master is required and should be a string"}), 400
+    if not serial_master:
+        return jsonify({"msg": "serial_master is required"}), 400
+
+    # Weryfikacja, czy serial_master jest ciągiem znaków
+    if not isinstance(serial_master, str):
+        return jsonify({"msg": "serial_master should be a string"}), 400
 
     # Pobranie serial_slaves
     serial_slaves = data.get("serial_slaves", [])
@@ -241,38 +245,40 @@ def put_user_data():
         for slave in serial_slaves:
             # Sprawdzenie klucza i wartości dla każdego slave
             for slave_key, slave_serial in slave.items():
-                if not slave_key.startswith("serial_slave"):
-                    continue  # Ignoruj nieprawidłowe klucze
+                if slave_key.startswith("serial_slave"):
+                    # Weryfikacja, czy serial_slave jest ciągiem znaków
+                    if not isinstance(slave_serial, str):
+                        return jsonify({"msg": f"serial_slave should be a string for {slave_key}"}), 400
 
-                control_data = slave.get("control_data", {})
-                light_mode = control_data.get("light_mode")
-                light_value = control_data.get("light_value")
+                    control_data = slave.get("control_data", {})
+                    light_mode = control_data.get("light_mode")
+                    light_value = control_data.get("light_value")
 
-                # Weryfikacja danych control_data
-                if light_mode is None or light_value is None:
-                    return jsonify({"msg": f"Missing control data for {slave_serial}"}), 400
+                    # Weryfikacja danych control_data
+                    if light_mode is None or light_value is None:
+                        return jsonify({"msg": f"Missing control data for {slave_serial}"}), 400
 
-                if not isinstance(light_mode, bool):
-                    return jsonify({"msg": f"Invalid light_mode for {slave_serial}, expected bool"}), 400
+                    if not isinstance(light_mode, bool):
+                        return jsonify({"msg": f"Invalid light_mode for {slave_serial}, expected bool"}), 400
 
-                # Sprawdzenie, czy serial_slave istnieje w tabeli masters
-                cursor.execute("""
-                    SELECT 1 FROM masters 
-                    WHERE %s IN (
-                        serial_slave_1, serial_slave_2, serial_slave_3, serial_slave_4, serial_slave_5,
-                        serial_slave_6, serial_slave_7, serial_slave_8, serial_slave_9, serial_slave_10
-                    )
-                """, (slave_serial,))
-                if not cursor.fetchone():
-                    return jsonify({"msg": f"Serial slave {slave_serial} not found in masters"}), 404
+                    # Sprawdzenie, czy serial_slave istnieje w tabeli masters
+                    cursor.execute("""
+                        SELECT 1 FROM masters 
+                        WHERE %s IN (
+                            serial_slave_1, serial_slave_2, serial_slave_3, serial_slave_4, serial_slave_5,
+                            serial_slave_6, serial_slave_7, serial_slave_8, serial_slave_9, serial_slave_10
+                        )
+                    """, (slave_serial,))
+                    if not cursor.fetchone():
+                        return jsonify({"msg": f"Serial slave {slave_serial} not found in masters"}), 404
 
-                # Wstawianie lub aktualizowanie danych w tabeli control_data
-                cursor.execute("""
-                    INSERT INTO control_data (serial_slave, light_mode, light_value)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (serial_slave) 
-                    DO UPDATE SET light_mode = EXCLUDED.light_mode, light_value = EXCLUDED.light_value
-                """, (slave_serial, light_mode, light_value))
+                    # Wstawianie lub aktualizowanie danych w tabeli control_data
+                    cursor.execute("""
+                        INSERT INTO control_data (serial_slave, light_mode, light_value)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (serial_slave) 
+                        DO UPDATE SET light_mode = EXCLUDED.light_mode, light_value = EXCLUDED.light_value
+                    """, (slave_serial, light_mode, light_value))
 
         # Zatwierdzenie transakcji
         conn.commit()
@@ -288,6 +294,7 @@ def put_user_data():
             cursor.close()
         if conn:
             conn.close()
+
 
 # MICROCONTROLLER SIDE
 
