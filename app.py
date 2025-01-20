@@ -211,8 +211,8 @@ def put_user_data():
     user_id = get_jwt_identity()
 
     # Odbiór danych z żądania JSON
-    data = request.get_json()
-    app.logger.error(f"Data = {data}")
+    # data = request.get_json()
+    data = json.loads(data)
 
     # Weryfikacja, czy dane są poprawnie sformatowane
     if not isinstance(data, dict):
