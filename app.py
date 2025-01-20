@@ -150,51 +150,47 @@ def get_user_data():
             ]
 
             # Jeśli istnieją jakiekolwiek serial_slave_x, wykonaj zapytanie po dane pomiarowe
-            if existing_slaves:
-                for slave_name, slave_serial in existing_slaves:
-                    cursor.execute("""
-                        SELECT timestamp, lux, temperature, humidity, pressure
-                        FROM sensor_data
-                        WHERE serial_slave = %s
-                        LIMIT 1  -- Pobieramy tylko jeden pakiet danych
-                    """, (slave_serial,))
+            for slave_name, slave_serial in existing_slaves:
+                # Pobranie danych pomiarowych dla serial_slave
+                cursor.execute("""
+                    SELECT timestamp, lux, temperature, humidity, pressure
+                    FROM sensor_data
+                    WHERE serial_slave = %s
+                    ORDER BY timestamp DESC LIMIT 1  -- Pobieramy tylko ostatni pakiet danych
+                """, (slave_serial,))
 
-                    # Pobranie wyników
-                    data = cursor.fetchone()  # Pobieramy tylko jeden wiersz danych
+                data = cursor.fetchone()
 
-                    # Pobieranie wartości light_mode i light_value z tabeli control_data
-                    cursor.execute("""
-                        SELECT light_mode, light_value
-                        FROM control_data
-                        WHERE serial_slave = %s
-                    """, (slave_serial,))
+                # Pobieranie wartości light_mode i light_value z tabeli control_data
+                cursor.execute("""
+                    SELECT light_mode, light_value
+                    FROM control_data
+                    WHERE serial_slave = %s
+                """, (slave_serial,))
 
-                    control_data = cursor.fetchone()
+                control_data = cursor.fetchone()
 
-                    # Jeśli dane istnieją, dodajemy je do listy serial_slaves
-                    if data or control_data:
-                        master_data["serial_slaves"].append({
-                            slave_name: slave_serial,
-                            "data": {
-                                "timestamp": data[0] if data else None,
-                                "lux": data[1] if data else None,
-                                "temperature": data[2] if data else None,
-                                "humidity": data[3] if data else None,
-                                "pressure": data[4] if data else None,
-                                "light_mode": control_data[0] if control_data else None,
-                                "light_value": control_data[1] if control_data else None
-                            }
-                        })
-                    else:
-                        master_data["serial_slaves"].append({
-                            slave_name: slave_serial,
-                            "data": None  # Jeśli brak danych pomiarowych i sterujących
-                        })
+                # Jeśli dane istnieją, dodajemy je do listy serial_slaves
+                slave_data = {
+                    "data": {
+                        "timestamp": data[0].strftime("%a, %d %b %Y %H:%M:%S GMT") if data else None,
+                        "lux": data[1] if data else None,
+                        "temperature": data[2] if data else None,
+                        "humidity": data[3] if data else None,
+                        "pressure": data[4] if data else None,
+                        "light_mode": control_data[0] if control_data else None,
+                        "light_value": control_data[1] if control_data else None
+                    }
+                }
+
+                # Dodajemy do odpowiedniej pozycji serial_slave
+                slave_data[slave_name] = slave_serial
+                master_data["serial_slaves"].append(slave_data)
 
             # Dodajemy dane dla serial_master do devices_data
             devices_data.append(master_data)
 
-        # Zwracamy dane bez "slaves" na początku
+        # Zwracamy dane
         return jsonify(devices_data), 200
 
     except Exception as e:
@@ -206,6 +202,7 @@ def get_user_data():
             cursor.close()
         if conn:
             conn.close()
+
 
 @app.route('/mobile-put', methods=['POST'])
 @jwt_required()  # Wymaga JWT
