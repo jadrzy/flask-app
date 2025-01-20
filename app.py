@@ -5,6 +5,7 @@ import psycopg2
 import logging
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import timedelta
+import json
 
 app = Flask(__name__)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=6)
@@ -211,7 +212,7 @@ def put_user_data():
     user_id = get_jwt_identity()
 
     # Odbiór danych z żądania JSON
-    # data = request.get_json()
+    data = request.get_json()
     data = json.loads(data)
 
     # Weryfikacja, czy dane są poprawnie sformatowane
