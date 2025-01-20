@@ -212,6 +212,7 @@ def put_user_data():
 
     # Odbiór danych z żądania JSON
     data = request.get_json()
+    app.logger.error(f"Data = {data}")
 
     # Weryfikacja, czy dane są poprawnie sformatowane
     if not isinstance(data, dict):
