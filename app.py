@@ -104,10 +104,10 @@ def get_user_data():
         cursor = conn.cursor()
 
         cursor.execute("""
-                    SELECT id
-                    FROM users
-                    WHERE username = %s
-                """, (user_id,))
+            SELECT id
+            FROM users
+            WHERE username = %s
+        """, (user_id,))
 
         id = cursor.fetchone()
 
@@ -115,10 +115,10 @@ def get_user_data():
             return jsonify({"msg": f"No active user {user_id}"}), 404
 
         cursor.execute("""
-                    SELECT serial_master
-                    FROM masters
-                    WHERE id_user = %s
-                """, (id,))
+            SELECT serial_master
+            FROM masters
+            WHERE id_user = %s
+        """, (id,))
 
         masters = cursor.fetchall()
 
@@ -162,22 +162,33 @@ def get_user_data():
                     # Pobranie wyników
                     data = cursor.fetchone()  # Pobieramy tylko jeden wiersz danych
 
+                    # Pobieranie wartości light_mode i light_value z tabeli control_data
+                    cursor.execute("""
+                        SELECT light_mode, light_value
+                        FROM control_data
+                        WHERE serial_slave = %s
+                    """, (slave_serial,))
+
+                    control_data = cursor.fetchone()
+
                     # Jeśli dane istnieją, dodajemy je do listy serial_slaves
-                    if data:
+                    if data or control_data:
                         master_data["serial_slaves"].append({
                             slave_name: slave_serial,
                             "data": {
-                                "timestamp": data[0],
-                                "lux": data[1],
-                                "temperature": data[2],
-                                "humidity": data[3],
-                                "pressure": data[4]
+                                "timestamp": data[0] if data else None,
+                                "lux": data[1] if data else None,
+                                "temperature": data[2] if data else None,
+                                "humidity": data[3] if data else None,
+                                "pressure": data[4] if data else None,
+                                "light_mode": control_data[0] if control_data else None,
+                                "light_value": control_data[1] if control_data else None
                             }
                         })
                     else:
                         master_data["serial_slaves"].append({
                             slave_name: slave_serial,
-                            "data": None  # Jeśli brak danych pomiarowych
+                            "data": None  # Jeśli brak danych pomiarowych i sterujących
                         })
 
             # Dodajemy dane dla serial_master do devices_data
@@ -195,7 +206,6 @@ def get_user_data():
             cursor.close()
         if conn:
             conn.close()
-
 
 @app.route('/mobile-put', methods=['POST'])
 @jwt_required()  # Wymaga JWT
